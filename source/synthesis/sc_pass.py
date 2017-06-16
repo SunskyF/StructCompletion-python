@@ -13,7 +13,6 @@ import math
 def imshow(img):
     cv2.namedWindow("tmp", cv2.WINDOW_NORMAL)
     cv2.imshow("tmp", img)
-    cv2.waitKey()
 
 def sc_pass(img, holeMask, NNF, modelPlaneCur, modelRegCur, option, lockImgFlag):
 

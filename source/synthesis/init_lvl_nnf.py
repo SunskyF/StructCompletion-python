@@ -6,6 +6,9 @@ from .src_domain_tform import src_domain_tform
 from .update_uvMap import update_uvMap
 from .prep_dist_patch import prep_dist_patch
 from .clamp import clamp
+from .uvMat_from_uvMap import uvMat_from_uvMap
+from .check_valid_uv import check_valid_uv
+from .trans_tform import trans_tform
 
 import numpy as np
 import cv2
@@ -148,10 +151,43 @@ def upsample(holeMask, NNF_L, modelPlane, modelReg, optS):
     sY = imgW_L / imgW_H
 
     uvPixL = type("uvPixL", (), {})
-    uvPixL.sub = round(NNF_H.uvPix.sub * np.diag([sX, sY]));
-    uvPixL.sub[:, 1] = sc_clamp(uvPixL.sub(:, 1), optS.pRad + 1, imgW_L - optS.pRad);
-    uvPixL.sub[:, 2] = sc_clamp(uvPixL.sub(:, 2), optS.pRad + 1, imgH_L - optS.pRad);
-    uvPixL.ind = uint32(sub2ind([imgH_L, imgW_L], uvPixL.sub(:, 2), uvPixL.sub(:, 1)));
+    uvPixL.sub = np.round(NNF_H.uvPix.sub.T.dot(np.diag([sX, sY])))
+    uvPixL.sub[:, 1] = clamp(uvPixL.sub[:, 0], optS.pRad + 1, imgW_L - optS.pRad)
+    uvPixL.sub[:, 2] = clamp(uvPixL.sub[:, 2], optS.pRad + 1, imgH_L - optS.pRad)
+    uvPixL.ind = np.ravel_multi_index([uvPixL.sub[:, 1], uvPixL.sub[:, 0]], [imgH_L, imgW_L], order='F')
+
+    NNF_H.uvPlaneID = type("uvPlaneID", (), {})
+    NNF_H.uvPlaneID.data = uvMat_from_uvMap(NNF_L.uvPlaneID.map, uvPixL.ind)
+    NNF_H.uvPlaneID.data[NNF_H.uvPlaneID.data == 0] = 1
+    NNF_H.uvPlaneID.map = np.zeros((NNF_H.imgH, NNF_H.imgW), dtype=np.uint8)
+    NNF_H.uvPlaneID.map = update_uvMap(NNF_H.uvPlaneID.map, NNF_H.uvPlaneID.data, NNF_H.uvPix.ind)
+
+    NNF_H.uvPlaneID.planeProbAcc = prep_plane_prob_acc(modelPlane.planeProb, NNF_H)
+    NNF_H.uvPlaneID.mLogLikelihood = -np.log(NNF_H.uvPlaneID.planeProbAcc)
+
+    refineVec = NNF_H.uvPix.sub - uvPixL.sub * np.diag([1 / sX, 1 / sY])
+    uvTform_H = trans_tform(uvTform_L, refineVec)
+
+    uvTform_L = uvMat_from_uvMap(NNF_L.uvTform.map, uvPixL.ind)
+    uvTform_L[:, 6: 8] = uvTform_L[:, 7: 8]*np.diag([1 / sX, 1 / sY])
+
+    uvValid_H = check_valid_uv(uvTform_H[:, 7: 8], NNF_H.validPix.mask)
+
+    uvInvalidInd = ~uvValid_H
+    nInvalidUv_H = sum(uvInvalidInd)
+    if nInvalidUv_H
+        randInd = randi(size(NNF_H.validPix.ind, 1), nInvalidUv_H, 1)
+        uvTform_H(uvInvalidInd, 7: 8) = NNF_H.validPix.sub(randInd,:)
+        randInd = np.random.randint(NNF.validPix.numPix, size=(NNF.uvPix.numPix))
+        uvRandSub = NNF.validPix.sub[:, randInd]
+
+
+    NNF_H.distMap, _ = ndimage.distance_transform_edt(1 - (holeMask == 0), return_indices=True)
+    NNF_H.wPatchR, NNF_H.wPatchSumImg = prep_dist_patch(NNF_H.distMap, NNF_H.uvPix.sub, optS)
+    NNF_H.uvDtBdPixPos = NNF_H.distMap[np.unravel_index(NNF_H.uvPix.ind, (NNF_H.imgH, NNF_H.imgW), order="F")].astype(
+        np.double)
+
+    return NNF_H
 
 def init_lvl_nnf(img, NNF, holeMask, modelPlaneCur, modelRegCur, option):
 
