@@ -87,6 +87,8 @@ def detect_plane_from_vp(vpData, img, mask, option):
         for line in vpData.vp[i].lines:
             cv2.line(imgLines, (int(line[0]), int(line[1])), (int(line[2]), int(line[3])), 255, 1)
 
+        #cv2.imshow("tmp", imgLines)
+        #cv2.waitKey()
         imgLines = imgLines.astype(np.double) / 255
         imgLinesPosMap = imgLines.copy()
 
@@ -191,6 +193,8 @@ def detect_plane_from_vp(vpData, img, mask, option):
     for i in range(numPlane):
         planeProbCh = planeProb[:, :, i]
         planeProb[:, :, i] = planeProbCh[inds[0, :, :], inds[1, :, :]]
+        #cv2.imshow("postProb", planeProb[:, :, i])
+        #cv2.waitKey()
         #TODO: roifill
 
 
@@ -198,10 +202,12 @@ def detect_plane_from_vp(vpData, img, mask, option):
     planeProb = planeProb / planeProbSum[..., None]
 
     planeProbSum = 1 + numPlane*option.probConst
-    planeProb = (planeProb + option .probConst) / planeProbSum
+    planeProb = (planeProb + option.probConst) / planeProbSum
 
     modelPlane.postProb = planeProb
-
+    #print(modelPlane.postProb.shape)
+    #cv2.imshow("postProb", modelPlane.postProb)
+    #cv2.waitKey()
     return modelPlane
 
 def read_vpdata(fileName):

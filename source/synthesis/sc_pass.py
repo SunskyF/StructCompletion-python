@@ -4,15 +4,18 @@ from .patch_cost import patch_cost
 from .update_uvMap import update_uvMap
 from .voting import voting
 from .update_NNF import update_NNF
+from ..vis.vis_nnf import vis_nnf
 
 import cv2
 import numpy as np
 import os
 import math
+import matplotlib.pyplot as plt
 
 def imshow(img):
     cv2.namedWindow("tmp", cv2.WINDOW_NORMAL)
     cv2.imshow("tmp", img)
+    cv2.waitKey()
 
 def sc_pass(img, holeMask, NNF, modelPlaneCur, modelRegCur, option, lockImgFlag):
 
@@ -36,6 +39,21 @@ def sc_pass(img, holeMask, NNF, modelPlaneCur, modelRegCur, option, lockImgFlag)
         if not lockImgFlag:
             img = voting(img, NNF, holeMask, option)
             imshow(img)
+
+        vis = False
+        if vis:
+            NNFVis = vis_nnf(NNF)
+            plt.figure()
+            plt.subplot(221)
+
+            plt.subplot(222)
+
+            plt.subplot(223)
+
+            plt.subplot(224)
+
+            plt.show()
+            cv2.waitKey()
 
         print("--- {}\t\t\t{}\t\t\t{}\t\t\t{}\t\t\t{}".format(
             iter, nUpdate[0], nUpdate[1], nUpdate[2], avgPatchCost[0]))

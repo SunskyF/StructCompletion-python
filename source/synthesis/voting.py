@@ -14,7 +14,7 @@ def voting(img, NNF, holeMask, option):
 
     srcPatch = prep_source_patch(img, NNF.uvTform.data, option)
 
-    if option.useBiasCorrection:
+    if not option.useBiasCorrection:
         biasPatch = NNF.uvBias.data
         srcPatch = srcPatch + biasPatch
 

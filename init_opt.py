@@ -108,7 +108,7 @@ optS.useBiasCorrection = 1
 
 # === Precomputed patch position in the reference position ===
 X, Y = np.meshgrid(np.arange(-optS.pRad, optS.pRad+1), np.arange(-optS.pRad, optS.pRad+1))
-optS.refPatchPos = np.vstack([X.reshape(-1), Y.reshape(-1), np.ones(optS.pSize*optS.pSize)]).T
+optS.refPatchPos = np.vstack([Y.reshape(-1), X.reshape(-1), np.ones(optS.pSize*optS.pSize)]).T
 
 # === Propagation directions ===
 optS.propDir = np.array([[1, 0], [0, 1], [-1, 0], [0, -1]])

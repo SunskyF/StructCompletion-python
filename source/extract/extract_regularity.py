@@ -3,6 +3,7 @@ import numpy as np
 import os
 import math
 from sklearn.cluster import MeanShift
+import matplotlib.pyplot as plt
 
 def extract_regularity(img, maskD, modelPlane, option):
     '''
@@ -39,6 +40,15 @@ def extract_regularity(img, maskD, modelPlane, option):
     flann = cv2.FlannBasedMatcher(index_params, search_params)
     matches = flann.knnMatch(des, des, k=option.numQueryNN)
 
+    draw_params = dict(matchColor=(0, 255, 0),
+                       singlePointColor=(255, 0, 0),
+                       flags=0)
+
+    #img3 = cv2.drawMatchesKnn(img, kp, img, kp, matches, None, **draw_params)
+
+    #cv2.imshow("tmp", img3)
+    #cv2.waitKey()
+
     index = np.zeros((option.numQueryNN, len(kp)), dtype=np.int)
     distance = np.zeros((option.numQueryNN, len(kp)))
     keypoints = np.zeros((len(kp), 2))
@@ -65,6 +75,7 @@ def extract_regularity(img, maskD, modelPlane, option):
 
         nn = featMatchData.index[:featMatchData.K+1, :]
 
+        # 充分利用match信息
         targetPosRect = np.hstack([framesRect[:2, nn[0, :]], framesRect[:2, nn[0, :]], framesRect[:2, nn[1, :]]])
         sourcePosRect = np.hstack([framesRect[:2, nn[1, :]], framesRect[:2, nn[2, :]], framesRect[:2, nn[2, :]]])
 
@@ -85,6 +96,7 @@ def extract_regularity(img, maskD, modelPlane, option):
 
         # get the matched features on the plane
         validMatchInd = weightVec >= option.prodProbThres
+
         sourcePosRect = sourcePosRect[:, validMatchInd]
         targetPosRect = targetPosRect[:, validMatchInd]
 
@@ -98,6 +110,12 @@ def extract_regularity(img, maskD, modelPlane, option):
         dispVecRect = np.hstack([dispVecRect, -dispVecRect])
         dispVecRect = np.hstack([dispVecRect, 2 * dispVecRect])
 
+        validDispVecInd = (np.abs(dispVecRect[0, :]) < 1000) & (np.abs(dispVecRect[1, :]) < 1000)
+        dispVecRect = dispVecRect[:, validDispVecInd]
+        #print(dispVecRect.shape)
+        #plt.scatter(dispVecRect[0, :], dispVecRect[1, :])
+        #plt.show()
+        #cv2.waitKey()
         if dispVecRect.shape[1] != 0:
             clf = MeanShift(bandwidth=option.msBandwidth)
             clf.fit(dispVecRect.T)

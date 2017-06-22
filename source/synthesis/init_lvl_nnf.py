@@ -21,8 +21,7 @@ def imshow(img):
 def getTargPathInd(NNF, option):
     pixIndMap = np.arange(NNF.imgH*NNF.imgW).reshape((NNF.imgW, NNF.imgH)).T[..., None].astype(np.float32)
     indTrgPatch = prep_target_patch(pixIndMap, NNF.uvPix.sub, option)
-
-    trgPatchInd = indTrgPatch.reshape((option.pNumPix, NNF.uvPix.numPix))
+    trgPatchInd = indTrgPatch.squeeze()
 
     trgPatchInd = np.vstack([trgPatchInd, trgPatchInd+NNF.imgH*NNF.imgW, trgPatchInd+2*NNF.imgH*NNF.imgW])
 
@@ -31,9 +30,9 @@ def getTargPathInd(NNF, option):
 def getUvPix(uvMap):
     uvPix = type("uvPix", (), {})
 
-    uvPix.sub = np.array(np.where(uvMap.T)) # col, row
-    uvPix.mask = uvMap
-    uvPix.ind = np.ravel_multi_index([uvPix.sub[1], uvPix.sub[0]], uvMap.shape, order='F')
+    uvPix.sub = np.array(np.where(uvMap.T)).T # col, row
+    uvPix.mask = uvMap.copy()
+    uvPix.ind = np.ravel_multi_index([uvPix.sub[:, 1], uvPix.sub[:, 0]], uvMap.shape, order='F')
     uvPix.numPix = uvPix.ind.shape[0]
 
     return uvPix
@@ -42,12 +41,12 @@ def getUvPixN(NNF, option):
     uvPixN = []
     for i in range(4):
         singleUvPixN = type("singleUvPixN", (), {})
-        singleUvPixN.sub = NNF.uvPix.sub - option.propDir[i, :][..., None] # 2 * N
+        singleUvPixN.sub = NNF.uvPix.sub - option.propDir[i, :][None, ...] # N * 2
 
-        singleUvPixN.ind = np.ravel_multi_index([singleUvPixN.sub[1], singleUvPixN.sub[0]],
+        singleUvPixN.ind = np.ravel_multi_index([singleUvPixN.sub[:, 1], singleUvPixN.sub[:, 0]],
                                                 [NNF.imgH, NNF.imgW], order='F')
 
-        singleUvPixN.validInd = NNF.uvPix.mask[singleUvPixN.sub[1, :], singleUvPixN.sub[0, :]]
+        singleUvPixN.validInd = NNF.uvPix.mask[singleUvPixN.sub[:, 1], singleUvPixN.sub[:, 0]]
 
         uvPixN.append(singleUvPixN)
 
@@ -59,7 +58,7 @@ def prep_plane_prob_acc(planeProb, NNF):
 
     planeProbAcc = np.zeros((numUvPix, numPlane+1), dtype=np.float32)
     for i in range(numPlane):
-        planeProbCur = planeProb[:, :, i]
+        planeProbCur = planeProb[:, :, i].copy()
         planeProbAcc[:, i+1] = planeProbCur[np.unravel_index(NNF.uvPix.ind, (NNF.imgH, NNF.imgW), order="F")]
         if i != 0:
             planeProbAcc[:, i+1] += planeProbAcc[:, i]
@@ -107,9 +106,9 @@ def init_nnf(holeMask, modelPlane, modelReg, option):
     # init uvTform
     if NNF.validPix.numPix:
         randInd = np.random.randint(NNF.validPix.numPix, size=(NNF.uvPix.numPix))
-        uvRandSub = NNF.validPix.sub[:, randInd]
+        uvRandSub = NNF.validPix.sub[randInd, :]
     else:
-        uvRandSub = (NNF.imgW / 2) * np.ones((2, NNF.uvPix.numPix))
+        uvRandSub = (NNF.imgW / 2) * np.ones((NNF.uvPix.numPix, 2))
 
     NNF.uvTform = type("uvTform", (), {})
     NNF.uvTform.data = src_domain_tform(NNF.uvPlaneID.data, modelPlane, modelReg, uvRandSub, NNF.uvPix.sub, 1)
@@ -129,7 +128,7 @@ def init_nnf(holeMask, modelPlane, modelReg, option):
     # init distmap
     NNF.distMap, _ = ndimage.distance_transform_edt(1 - (holeMask == 0), return_indices=True)
     NNF.wPatchR, NNF.wPatchSumImg = prep_dist_patch(NNF.distMap, NNF.uvPix.sub, option)
-    NNF.uvDtBdPixPos = NNF.distMap[np.unravel_index(NNF.uvPix.ind, (NNF.imgH, NNF.imgW), order="F")].astype(np.double)
+    NNF.uvDtBdPixPos = NNF.distMap[np.unravel_index(NNF.uvPix.ind, (NNF.imgH, NNF.imgW), order="F")].astype(np.double).copy()
 
     return NNF
 
@@ -151,36 +150,59 @@ def upsample(holeMask, NNF_L, modelPlane, modelReg, optS):
     sY = imgW_L / imgW_H
 
     uvPixL = type("uvPixL", (), {})
-    uvPixL.sub = np.round(NNF_H.uvPix.sub.T.dot(np.diag([sX, sY])))
-    uvPixL.sub[:, 1] = clamp(uvPixL.sub[:, 0], optS.pRad + 1, imgW_L - optS.pRad)
-    uvPixL.sub[:, 2] = clamp(uvPixL.sub[:, 2], optS.pRad + 1, imgH_L - optS.pRad)
-    uvPixL.ind = np.ravel_multi_index([uvPixL.sub[:, 1], uvPixL.sub[:, 0]], [imgH_L, imgW_L], order='F')
+
+    uvPixL.sub = np.array(np.round(NNF_H.uvPix.sub.dot(np.diag([sX, sY]))))
+
+    uvPixL.sub[:, 0] = clamp(uvPixL.sub[:, 0], optS.pRad + 1, imgW_L - optS.pRad)
+    uvPixL.sub[:, 1] = clamp(uvPixL.sub[:, 1], optS.pRad + 1, imgH_L - optS.pRad)
+    uvPixL.sub = uvPixL.sub.astype(np.int)
+    uvPixL.ind = np.ravel_multi_index([uvPixL.sub[:, 1], uvPixL.sub[:, 0]],
+                                      [imgH_L, imgW_L], order='F')
 
     NNF_H.uvPlaneID = type("uvPlaneID", (), {})
     NNF_H.uvPlaneID.data = uvMat_from_uvMap(NNF_L.uvPlaneID.map, uvPixL.ind)
+
     NNF_H.uvPlaneID.data[NNF_H.uvPlaneID.data == 0] = 1
-    NNF_H.uvPlaneID.map = np.zeros((NNF_H.imgH, NNF_H.imgW), dtype=np.uint8)
-    NNF_H.uvPlaneID.map = update_uvMap(NNF_H.uvPlaneID.map, NNF_H.uvPlaneID.data, NNF_H.uvPix.ind)
+    NNF_H.uvPlaneID.data = NNF_H.uvPlaneID.data.squeeze()
+
+    NNF_H.uvPlaneID.map = np.zeros((NNF_H.imgH, NNF_H.imgW, 1), dtype=np.uint8)
+    NNF_H.uvPlaneID.map = update_uvMap(NNF_H.uvPlaneID.map, NNF_H.uvPlaneID.data[..., None], NNF_H.uvPix.ind)
 
     NNF_H.uvPlaneID.planeProbAcc = prep_plane_prob_acc(modelPlane.planeProb, NNF_H)
     NNF_H.uvPlaneID.mLogLikelihood = -np.log(NNF_H.uvPlaneID.planeProbAcc)
 
-    refineVec = NNF_H.uvPix.sub - uvPixL.sub * np.diag([1 / sX, 1 / sY])
-    uvTform_H = trans_tform(uvTform_L, refineVec)
 
     uvTform_L = uvMat_from_uvMap(NNF_L.uvTform.map, uvPixL.ind)
-    uvTform_L[:, 6: 8] = uvTform_L[:, 7: 8]*np.diag([1 / sX, 1 / sY])
+    uvTform_L[:, 6: 8] = uvTform_L[:, 6: 8].dot(np.diag([1 / sX, 1 / sY]))
 
-    uvValid_H = check_valid_uv(uvTform_H[:, 7: 8], NNF_H.validPix.mask)
+    refineVec = NNF_H.uvPix.sub - uvPixL.sub.dot(np.diag([1 / sX, 1 / sY]))
+    uvTform_H = trans_tform(uvTform_L, refineVec)
 
-    uvInvalidInd = ~uvValid_H
-    nInvalidUv_H = sum(uvInvalidInd)
-    if nInvalidUv_H
-        randInd = randi(size(NNF_H.validPix.ind, 1), nInvalidUv_H, 1)
-        uvTform_H(uvInvalidInd, 7: 8) = NNF_H.validPix.sub(randInd,:)
-        randInd = np.random.randint(NNF.validPix.numPix, size=(NNF.uvPix.numPix))
-        uvRandSub = NNF.validPix.sub[:, randInd]
+    uvValid_H = check_valid_uv(uvTform_H[:, 6: 8], NNF_H.validPix.mask)
 
+    uvInvalidInd = uvValid_H == 0
+    nInvalidUv_H = np.sum(uvInvalidInd)
+    if nInvalidUv_H:
+        randInd = np.random.randint(NNF_H.validPix.ind.shape[0], size=(nInvalidUv_H))
+        uvTform_H[uvInvalidInd.squeeze(), 6: 8] = NNF_H.validPix.sub[randInd, :]
+
+    NNF_H.uvTform = type("uvTform", (), {})
+    NNF_H.uvTform.data = uvTform_H
+    I = np.reshape(np.eye(3), (1, 1, 9))
+
+    NNF_H.uvTform.map = np.tile(I, (imgH_H, imgW_H, 1))
+    NNF_H.uvTform.map = update_uvMap(NNF_H.uvTform.map, NNF_H.uvTform.data, NNF_H.uvPix.ind)
+
+    NNF_H.uvBias = type("uvBias", (), {})
+    NNF_H.uvBias.data = uvMat_from_uvMap(NNF_L.uvBias.map, uvPixL.ind)
+    NNF_H.uvBias.map = np.zeros((imgH_H, imgW_H, 3), dtype=np.float32)
+    NNF_H.uvBias.map = update_uvMap(NNF_H.uvBias.map, NNF_H.uvBias.data, NNF_H.uvPix.ind)
+    NNF_H.uvBias.data = np.reshape(NNF_H.uvBias.data.T, [1, 3, NNF_H.uvPix.numPix])
+
+    NNF_H.uvCost = type("uvCost", (), {})
+    NNF_H.uvCost.map = np.zeros((imgH_H, imgW_H, 1), np.float32)
+    NNF_H.uvCost.data = uvMat_from_uvMap(NNF_L.uvCost.map, uvPixL.ind)
+    NNF_H.uvCost.map = update_uvMap(NNF_H.uvCost.map, NNF_H.uvCost.data, NNF_H.uvPix.ind)
 
     NNF_H.distMap, _ = ndimage.distance_transform_edt(1 - (holeMask == 0), return_indices=True)
     NNF_H.wPatchR, NNF_H.wPatchSumImg = prep_dist_patch(NNF_H.distMap, NNF_H.uvPix.sub, optS)

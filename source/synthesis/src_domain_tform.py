@@ -10,13 +10,13 @@ def debug(debuginfo):
     print(a)
 
 def apply_tform_H(x, h7, h8):
-    y = x[0, :] * h7 + x[1, :] * h8 + 1
-    y = x[:2, :] / (y + eps)
+    y = x[:, 0] * h7 + x[:, 1] * h8 + 1
+    y = x[:, :2] / (y[..., None] + eps)
     return y
 
 def src_domain_tform(uvPlaneID, modelPlane, modelReg, srcPos, trgPos, sampleRandReg):
 
-    numUvPix = srcPos.shape[1]
+    numUvPix = srcPos.shape[0]
 
     uvTformData = np.zeros((numUvPix, 9), dtype=np.float32)
     I = np.eye(3)
@@ -31,14 +31,14 @@ def src_domain_tform(uvPlaneID, modelPlane, modelReg, srcPos, trgPos, sampleRand
 
         if numPlanePixCur:
 
-            trgPosCur = trgPos[:, uvPlaneIndCur] - 1
+            trgPosCur = trgPos[uvPlaneIndCur, :].copy() - 1
             trgPosCurR = apply_tform_H(trgPosCur, h7, h8)
 
             if sampleRandReg:
-                srcPosCur = srcPos[:, uvPlaneIndCur] - 1
+                srcPosCur = srcPos[uvPlaneIndCur, :].copy() - 1
                 srcPosCurR = apply_tform_H(srcPosCur, h7, h8)
 
-                dRect = srcPosCurR.T - trgPosCurR.T
+                dRect = srcPosCurR - trgPosCurR
 
             else:
                 dRect = np.zeros((numPlanePixCur, 2), dtype=np.float32)

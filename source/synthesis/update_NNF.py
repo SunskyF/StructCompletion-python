@@ -28,21 +28,21 @@ def propagate(trgPatch, img, NNF, modelPlane, option, iDirect):
 
     while numUpdatePix != 0:
         uvPix = type("uvPix", (), {})
-        uvPix.sub = NNF.uvPix.sub[:, uvPixActiveInd == 1]
-        uvPix.ind = NNF.uvPix.ind[uvPixActiveInd == 1]
+        uvPix.sub = NNF.uvPix.sub[uvPixActiveInd == 1, :].copy()
+        uvPix.ind = NNF.uvPix.ind[uvPixActiveInd == 1].copy()
 
         uvPixNCur = type("uvPixNCur", (), {})
-        uvPixNCur.sub = uvPixN.sub[:, uvPixActiveInd == 1]
-        uvPixNCur.ind = uvPixN.ind[uvPixActiveInd == 1]
+        uvPixNCur.sub = uvPixN.sub[uvPixActiveInd == 1, :].copy()
+        uvPixNCur.ind = uvPixN.ind[uvPixActiveInd == 1].copy()
 
-        uvDtBdPixPosCur = NNF.uvDtBdPixPos[uvPixActiveInd == 1]
+        uvDtBdPixPosCur = NNF.uvDtBdPixPos[uvPixActiveInd == 1].copy()
 
-        trgPatchCur = trgPatch[:, :, uvPixActiveInd == 1]
-        srcPosCur = NNF.uvTform.data[uvPixActiveInd == 1, 6:8]
-        uvCostCur = NNF.uvCost.data[uvPixActiveInd == 1]
-        uvPlaneIDCur = NNF.uvPlaneID.data[uvPixActiveInd == 1]
+        trgPatchCur = trgPatch[:, :, uvPixActiveInd == 1].copy()
+        srcPosCur = NNF.uvTform.data[uvPixActiveInd == 1, 6:8].copy()
+        uvCostCur = NNF.uvCost.data[uvPixActiveInd == 1].copy()
+        uvPlaneIDCur = NNF.uvPlaneID.data[uvPixActiveInd == 1].copy()
 
-        srcPosMapCur = NNF.uvTform.map[:, :, 6: 8]
+        srcPosMapCur = NNF.uvTform.map[:, :, 6:8].copy()
         uvPixActivePos = np.where(uvPixActiveInd == 1)[0]
 
         uvTformCand = uvMat_from_uvMap(NNF.uvTform.map, uvPixNCur.ind)
@@ -59,16 +59,16 @@ def propagate(trgPatch, img, NNF, modelPlane, option, iDirect):
 
         if numUvValid != 0:
             uvPixValid = type("uvPixValid", (), {})
-            uvPixValid.sub = uvPix.sub[:, uvValidInd.squeeze() == 1]
-            uvPixValid.ind = uvPix.ind[uvValidInd.squeeze()]
+            uvPixValid.sub = uvPix.sub[uvValidInd.squeeze() == 1, :].copy()
+            uvPixValid.ind = uvPix.ind[uvValidInd.squeeze()].copy()
 
-            uvDtBdPixPosCur = uvDtBdPixPosCur[uvValidInd.squeeze()]
-            trgPatchCur = trgPatchCur[:,:, uvValidInd.squeeze()]
-            uvTformCand = uvTformCand[uvValidInd.squeeze(), :]
-            uvCostCur = uvCostCur[uvValidInd.squeeze()]
-            uvPlaneIDCand = uvPlaneIDCur[uvValidInd.squeeze()]
+            uvDtBdPixPosCur = uvDtBdPixPosCur[uvValidInd.squeeze()].copy()
+            trgPatchCur = trgPatchCur[:,:, uvValidInd.squeeze()].copy()
+            uvTformCand = uvTformCand[uvValidInd.squeeze(), :].copy()
+            uvCostCur = uvCostCur[uvValidInd.squeeze()].copy()
+            uvPlaneIDCand = uvPlaneIDCur[uvValidInd.squeeze()].copy()
 
-            uvPixUpdatePos = uvPixActivePos[uvValidInd.squeeze()]
+            uvPixUpdatePos = uvPixActivePos[uvValidInd.squeeze()].copy()
 
             srcPatch = prep_source_patch(img, uvTformCand, option)
 
@@ -106,13 +106,13 @@ def propagate(trgPatch, img, NNF, modelPlane, option, iDirect):
             NNF.uvPlaneID.map = update_uvMap(NNF.uvPlaneID.map,
                                              uvPlaneIDCand[updateInd][..., None], uvPixValidInd)
 
-            uvPixNextSub = uvPixValid.sub[:, updateInd]
-            uvPixNextSub = uvPixNextSub + option.propDir[iDirect, :][..., None]
+            uvPixNextSub = uvPixValid.sub[updateInd, :].copy()
+            uvPixNextSub = uvPixNextSub + option.propDir[iDirect, :][None, ...]
 
             updateMap = NNF.uvPix.mask
+            updateMap[uvPixNextSub[:, 1], uvPixNextSub[:, 0]] = 0
 
-            updateMap[uvPixNextSub[1, :], uvPixNextSub[0, :]] = 0
-            uvPixActiveInd = updateMap[NNF.uvPix.sub[1, :], NNF.uvPix.sub[0, :]] == 0
+            uvPixActiveInd = updateMap[NNF.uvPix.sub[:, 1], NNF.uvPix.sub[:, 0]] == 0
             uvPixActiveInd = (uvPixActiveInd == 1) & (uvPixN.validInd == 1)
     return NNF, nUpdateTotal
 
@@ -120,7 +120,7 @@ def random_search(trgPatch, img, NNF, modelPlane, option):
     H, W, Ch = img.shape
 
     uvPix = NNF.uvPix
-    numUvPix = uvPix.sub.shape[1]
+    numUvPix = uvPix.sub.shape[0]
 
     searchRad = max(H, W) / 2
     nUpdateTotal = 0
@@ -139,7 +139,7 @@ def random_search(trgPatch, img, NNF, modelPlane, option):
 
         uvPlaneIDCand = draw_plane_id(NNF.uvPlaneID.planeProbAcc)
 
-        uvTformCand = src_domain_tform(uvPlaneIDCand.squeeze(), modelPlane, [], srcPos.T, NNF.uvPix.sub, 1)
+        uvTformCand = src_domain_tform(uvPlaneIDCand.squeeze(), modelPlane, [], srcPos, NNF.uvPix.sub, 1)
 
         uvTformScale = scale_tform(uvTformCand)
         uvValidScaleInd = (uvTformScale.squeeze() > option.minScale) & (uvTformScale.squeeze() < option.maxScale)
@@ -148,19 +148,20 @@ def random_search(trgPatch, img, NNF, modelPlane, option):
         uvValidInd = (uvValidSrcInd == 1).squeeze() & (uvValidScaleInd.squeeze() == 1).squeeze()
 
         uvPixActivePos = np.array(np.where(uvValidInd.squeeze())).squeeze()
+
         numActPix = uvPixActivePos.shape[0]
 
         if numActPix != 0:
             trgPatchCur = trgPatch[:, :, uvValidInd.squeeze()]
             uvCostDataCur = NNF.uvCost.data[uvValidInd]
-            uvTformCandCur = uvTformCand[uvValidInd,:]
+            uvTformCandCur = uvTformCand[uvValidInd, :].copy()
             uvPlaneIDCandCur = uvPlaneIDCand[uvValidInd].squeeze()
 
             uvPixValid = type("uvPixValid", (), {})
-            uvPixValid.sub = uvPix.sub[:, uvValidInd]
+            uvPixValid.sub = uvPix.sub[uvValidInd, :]
             uvPixValid.ind = uvPix.ind[uvValidInd]
 
-            uvDtBdPixPosCur = NNF.uvDtBdPixPos[uvValidInd]
+            uvDtBdPixPosCur = NNF.uvDtBdPixPos[uvValidInd].copy()
 
             srcPatch = prep_source_patch(img, uvTformCandCur, option)
 
@@ -176,14 +177,14 @@ def random_search(trgPatch, img, NNF, modelPlane, option):
 
                 nUpdateTotal = nUpdateTotal + nUpdate
 
-                NNF.uvTform.data[uvPixActivePos,:] = uvTformCandCur[updateInd,:]
-                NNF.uvPlaneID.data[uvPixActivePos] = uvPlaneIDCandCur[updateInd]
+                NNF.uvTform.data[uvPixActivePos,:] = uvTformCandCur[updateInd,:].copy()
+                NNF.uvPlaneID.data[uvPixActivePos] = uvPlaneIDCandCur[updateInd].copy()
 
-                NNF.uvCost.data[uvPixActivePos] = costPatchCand[updateInd][..., None]
+                NNF.uvCost.data[uvPixActivePos] = costPatchCand[updateInd][..., None].copy()
                 if option.useBiasCorrection:
                     NNF.uvBias.data[:, uvPixActivePos] = uvBiasCand[:, updateInd]
 
-                uvPixValidInd = uvPixValid.ind[updateInd]
+                uvPixValidInd = uvPixValid.ind[updateInd].copy()
                 NNF.uvTform.map = update_uvMap(NNF.uvTform.map, uvTformCandCur[updateInd,:], uvPixValidInd)
 
                 NNF.uvPlaneID.map = update_uvMap(NNF.uvPlaneID.map, uvPlaneIDCandCur[updateInd][..., None],

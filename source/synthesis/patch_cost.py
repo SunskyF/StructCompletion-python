@@ -4,17 +4,17 @@ import cv2
 
 def patch_cost_prox(srcPos, trgPos, uvDtBdPixPos, optS):
 
-    d = srcPos - trgPos.T
+    d = srcPos - trgPos
     d = np.sqrt(np.sum(d ** 2, axis=1))
 
     d = d/optS.imgSize
-    uvDtBdPixPos = uvDtBdPixPos / optS.imgSize
+    uvDtBdPixPos = uvDtBdPixPos.copy() / optS.imgSize
     costProx = d - uvDtBdPixPos - optS.proxThres
     costProx[costProx <= 0] = 0
     return costProx
 
 def patch_cost_direct(uvPlaneIDData, trgPos, srcPos, modelPlane, opt):
-    numUvPix = trgPos.shape[1]
+    numUvPix = trgPos.shape[0]
     costDirect = opt.lambdaDirect * np.ones((numUvPix, 2), dtype=np.float32)
 
     for indPlane in range(modelPlane.numPlane):
@@ -29,9 +29,8 @@ def patch_cost_direct(uvPlaneIDData, trgPos, srcPos, modelPlane, opt):
             h8 = rectMat[2, 1]
 
             if numPlanePixCur != 0:
-
-                trgPosCur = (trgPos[:, uvPlaneIndCur] - 1).T
-                srcPosCur = (srcPos[uvPlaneIndCur, :] - 1)
+                trgPosCur = trgPos[uvPlaneIndCur, :].copy() - 1
+                srcPosCur = srcPos[uvPlaneIndCur, :].copy() - 1
 
                 for itheta in range(2):
                     rotMat = modelPlane.rotMat[indPlane][itheta]
@@ -48,7 +47,7 @@ def patch_cost_direct(uvPlaneIDData, trgPos, srcPos, modelPlane, opt):
                     srcPosCurRect /= srcPosCurRect[:, 2:3]
 
                     costDirect[uvPlaneIndCur, itheta] = np.abs(srcPosCurRect[:, 1] - trgPosCurRect[:, 1])
-    costDirect = np.min(costDirect, axis=1)
+    costDirect = np.min(costDirect, axis=1) / opt.imgSize
     costDirect[costDirect >= opt.directThres] = opt.directThres
     return costDirect
 
@@ -56,10 +55,10 @@ def patch_cost_plane(mLogLPlaneProb, uvPlaneIDData, trgPixSub, srcPixSub):
     H, W, numPlane = mLogLPlaneProb.shape
 
     srcPixSub = np.round(srcPixSub)
-    uvPlaneIDData = uvPlaneIDData.astype(np.int)
+    uvPlaneIDData_in = uvPlaneIDData.astype(np.int)
 
-    return mLogLPlaneProb[trgPixSub[1, :].astype(np.int), trgPixSub[0, :].astype(np.int), uvPlaneIDData] + \
-           mLogLPlaneProb[srcPixSub[:, 1].astype(np.int), srcPixSub[:, 0].astype(np.int), uvPlaneIDData]
+    return mLogLPlaneProb[trgPixSub[:, 1].astype(np.int), trgPixSub[:, 0].astype(np.int), uvPlaneIDData_in] + \
+           mLogLPlaneProb[srcPixSub[:, 1].astype(np.int), srcPixSub[:, 0].astype(np.int), uvPlaneIDData_in]
 
 def patch_cost_app(trgPatch, srcPatch, option):
     uvBias = None

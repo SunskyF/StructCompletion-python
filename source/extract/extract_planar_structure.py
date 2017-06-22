@@ -17,7 +17,8 @@ def extract_planar_structure(image_name, option):
         modelReg:   Regularity model
     '''
     img = cv2.imread(os.path.join('data', image_name), cv2.IMREAD_UNCHANGED)
-
+    #cv2.imshow("origin", img)
+    #cv2.waitKey()
     assert(img.shape[-1] == 4)
 
     alpha = img[..., -1]

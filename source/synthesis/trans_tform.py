@@ -2,7 +2,7 @@
 eps = 1e-16
 
 def trans_tform(uvTformV, d_in):
-    d = d_in.T.copy()
+    d = d_in.copy()
 
     uvTform = uvTformV.copy()
 
