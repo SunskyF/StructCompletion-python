@@ -34,7 +34,6 @@ def getUvPix(uvMap):
     uvPix.mask = uvMap.copy()
     uvPix.ind = np.ravel_multi_index([uvPix.sub[:, 1], uvPix.sub[:, 0]], uvMap.shape, order='F')
     uvPix.numPix = uvPix.ind.shape[0]
-
     return uvPix
 
 def getUvPixN(NNF, option):
@@ -42,7 +41,6 @@ def getUvPixN(NNF, option):
     for i in range(4):
         singleUvPixN = type("singleUvPixN", (), {})
         singleUvPixN.sub = NNF.uvPix.sub - option.propDir[i, :][None, ...] # N * 2
-
         singleUvPixN.ind = np.ravel_multi_index([singleUvPixN.sub[:, 1], singleUvPixN.sub[:, 0]],
                                                 [NNF.imgH, NNF.imgW], order='F')
 
@@ -155,14 +153,14 @@ def upsample(holeMask, NNF_L, modelPlane, modelReg, optS):
 
     uvPixL.sub[:, 0] = clamp(uvPixL.sub[:, 0], optS.pRad + 1, imgW_L - optS.pRad)
     uvPixL.sub[:, 1] = clamp(uvPixL.sub[:, 1], optS.pRad + 1, imgH_L - optS.pRad)
-    uvPixL.sub = uvPixL.sub.astype(np.int)
+    uvPixL.sub = uvPixL.sub.astype(np.uint)
     uvPixL.ind = np.ravel_multi_index([uvPixL.sub[:, 1], uvPixL.sub[:, 0]],
                                       [imgH_L, imgW_L], order='F')
 
     NNF_H.uvPlaneID = type("uvPlaneID", (), {})
     NNF_H.uvPlaneID.data = uvMat_from_uvMap(NNF_L.uvPlaneID.map, uvPixL.ind)
-
-    NNF_H.uvPlaneID.data[NNF_H.uvPlaneID.data == 0] = 1
+    #print("uvPlaneId: ", np.sum(NNF_H.uvPlaneID.data == 0))
+    #NNF_H.uvPlaneID.data[NNF_H.uvPlaneID.data == 0] = 1
     NNF_H.uvPlaneID.data = NNF_H.uvPlaneID.data.squeeze()
 
     NNF_H.uvPlaneID.map = np.zeros((NNF_H.imgH, NNF_H.imgW, 1), dtype=np.uint8)
@@ -170,7 +168,6 @@ def upsample(holeMask, NNF_L, modelPlane, modelReg, optS):
 
     NNF_H.uvPlaneID.planeProbAcc = prep_plane_prob_acc(modelPlane.planeProb, NNF_H)
     NNF_H.uvPlaneID.mLogLikelihood = -np.log(NNF_H.uvPlaneID.planeProbAcc)
-
 
     uvTform_L = uvMat_from_uvMap(NNF_L.uvTform.map, uvPixL.ind)
     uvTform_L[:, 6: 8] = uvTform_L[:, 6: 8].dot(np.diag([1 / sX, 1 / sY]))
@@ -188,7 +185,7 @@ def upsample(holeMask, NNF_L, modelPlane, modelReg, optS):
 
     NNF_H.uvTform = type("uvTform", (), {})
     NNF_H.uvTform.data = uvTform_H
-    I = np.reshape(np.eye(3), (1, 1, 9))
+    I = np.reshape(np.eye(3), (1, 1, 9), order="F")
 
     NNF_H.uvTform.map = np.tile(I, (imgH_H, imgW_H, 1))
     NNF_H.uvTform.map = update_uvMap(NNF_H.uvTform.map, NNF_H.uvTform.data, NNF_H.uvPix.ind)
@@ -197,7 +194,7 @@ def upsample(holeMask, NNF_L, modelPlane, modelReg, optS):
     NNF_H.uvBias.data = uvMat_from_uvMap(NNF_L.uvBias.map, uvPixL.ind)
     NNF_H.uvBias.map = np.zeros((imgH_H, imgW_H, 3), dtype=np.float32)
     NNF_H.uvBias.map = update_uvMap(NNF_H.uvBias.map, NNF_H.uvBias.data, NNF_H.uvPix.ind)
-    NNF_H.uvBias.data = np.reshape(NNF_H.uvBias.data.T, [1, 3, NNF_H.uvPix.numPix])
+    NNF_H.uvBias.data = np.reshape(NNF_H.uvBias.data.T, [1, 3, NNF_H.uvPix.numPix], order="F")
 
     NNF_H.uvCost = type("uvCost", (), {})
     NNF_H.uvCost.map = np.zeros((imgH_H, imgW_H, 1), np.float32)

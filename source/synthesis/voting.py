@@ -14,16 +14,12 @@ def voting(img, NNF, holeMask, option):
 
     srcPatch = prep_source_patch(img, NNF.uvTform.data, option)
 
-    if not option.useBiasCorrection:
-        biasPatch = NNF.uvBias.data
-        srcPatch = srcPatch + biasPatch
-
     trgPatchInd = NNF.trgPatchInd
 
-    wPatchR = np.reshape(NNF.wPatchR, (option.pNumPix, 1, numUvPix))
+    wPatchR = np.reshape(NNF.wPatchR, (option.pNumPix, 1, numUvPix), order="F")
     srcPatch = srcPatch * wPatchR
 
-    srcPatch = np.reshape(srcPatch, (option.pNumPix * Ch, numUvPix))
+    srcPatch = np.reshape(srcPatch, (option.pNumPix * Ch, numUvPix), order="F")
 
     imgAcc = np.zeros((H, W, Ch), dtype=np.float32)
     for i in range(numUvPix):

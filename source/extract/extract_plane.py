@@ -94,11 +94,9 @@ def detect_plane_from_vp(vpData, img, mask, option):
 
         for k in range(option.numFilterIter):
             imgLinesPosMap = cv2.filter2D(imgLinesPosMap, -1, HfilterX, borderType=cv2.BORDER_REPLICATE)
-        imgLinesPosMap[imgLinesPosMap < 0] = 0
 
         for k in range(option.numFilterIter):
             imgLinesPosMap = cv2.filter2D(imgLinesPosMap, -1, HfilterY, borderType=cv2.BORDER_REPLICATE)
-        imgLinesPosMap[imgLinesPosMap < 0] = 0
 
         # Save results
         modelPlane.vp.append(VP_imgLines(imgLines, imgLinesPosMap))
@@ -192,10 +190,9 @@ def detect_plane_from_vp(vpData, img, mask, option):
     # propagate posterior prob into the hole region
     for i in range(numPlane):
         planeProbCh = planeProb[:, :, i]
-        planeProb[:, :, i] = planeProbCh[inds[0, :, :], inds[1, :, :]]
+        planeProb[:, :, i] = planeProbCh[inds[0, :, :], inds[1, :, :]].copy()
         #cv2.imshow("postProb", planeProb[:, :, i])
         #cv2.waitKey()
-        #TODO: roifill
 
 
     planeProbSum = np.sum(planeProb, axis=2)
@@ -204,7 +201,7 @@ def detect_plane_from_vp(vpData, img, mask, option):
     planeProbSum = 1 + numPlane*option.probConst
     planeProb = (planeProb + option.probConst) / planeProbSum
 
-    modelPlane.postProb = planeProb
+    modelPlane.postProb = planeProb.copy()
     #print(modelPlane.postProb.shape)
     #cv2.imshow("postProb", modelPlane.postProb)
     #cv2.waitKey()

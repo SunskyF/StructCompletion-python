@@ -31,11 +31,14 @@ def src_domain_tform(uvPlaneID, modelPlane, modelReg, srcPos, trgPos, sampleRand
 
         if numPlanePixCur:
 
-            trgPosCur = trgPos[uvPlaneIndCur, :].copy() - 1
+            trgPosCur = trgPos[uvPlaneIndCur, :].copy()
+            trgPosCur[trgPosCur > 0] -= 1
             trgPosCurR = apply_tform_H(trgPosCur, h7, h8)
 
             if sampleRandReg:
                 srcPosCur = srcPos[uvPlaneIndCur, :].copy() - 1
+
+                srcPosCur[srcPosCur > 0] -= 1
                 srcPosCurR = apply_tform_H(srcPosCur, h7, h8)
 
                 dRect = srcPosCurR - trgPosCurR
@@ -59,7 +62,7 @@ def src_domain_tform(uvPlaneID, modelPlane, modelReg, srcPos, trgPos, sampleRand
 
                 uvTformCur[:, np.array([2, 5, 8])] = dTemp[..., None] * -np.array([h7, h8, 1])[None, ...]
 
-                uvTformCur = uvTformCur + I.reshape((1, 9))
+                uvTformCur = uvTformCur + I.reshape((1, 9), order="F")
 
                 uvTformData[uvPlaneIndCur, :] = trans_tform(uvTformCur, trgPosCur)
                 uvTformData[uvPlaneIndCur, 6:8] += 1

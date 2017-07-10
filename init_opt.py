@@ -104,7 +104,7 @@ optS.lambdaReg    = -0.02              # Weighting parameters for encouraging
 
 optS.useRegGuide   = 1
 optS.usePlaneGuide = 1
-optS.useBiasCorrection = 1
+optS.useBiasCorrection = 0
 
 # === Precomputed patch position in the reference position ===
 X, Y = np.meshgrid(np.arange(-optS.pRad, optS.pRad+1), np.arange(-optS.pRad, optS.pRad+1))

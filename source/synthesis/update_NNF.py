@@ -177,7 +177,7 @@ def random_search(trgPatch, img, NNF, modelPlane, option):
 
                 nUpdateTotal = nUpdateTotal + nUpdate
 
-                NNF.uvTform.data[uvPixActivePos,:] = uvTformCandCur[updateInd,:].copy()
+                NNF.uvTform.data[uvPixActivePos, :] = uvTformCandCur[updateInd, :].copy()
                 NNF.uvPlaneID.data[uvPixActivePos] = uvPlaneIDCandCur[updateInd].copy()
 
                 NNF.uvCost.data[uvPixActivePos] = costPatchCand[updateInd][..., None].copy()

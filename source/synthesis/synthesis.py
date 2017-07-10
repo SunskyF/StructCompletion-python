@@ -31,7 +31,7 @@ def synthesis(imgPyr, maskPyr, modelPlane, modelReg, option):
 
         print("--- Pass... level: {}, #Iter: {}, #uvPixels: {}".format(iLvl, numIterLvl, NNF.uvPix.numPix))
         print("--- #iter\t#PropUpdate\t\t#RandUpdate\t\t#RegUpdate\t\tAvgCost")
-        print(maskPyr[iLvl].shape)
+        print("img size: ", maskPyr[iLvl].shape)
         if option.iLvl == option.numPyrLvl - 1:
             img, NNF = sc_pass(img, holeMask, NNF, modelPlaneCur, modelRegCur, option, 1)
 
@@ -40,4 +40,7 @@ def synthesis(imgPyr, maskPyr, modelPlane, modelReg, option):
             img, NNF = sc_pass(img, holeMask, NNF, modelPlaneCur, modelRegCur, option, 0)
 
         imgPyr[iLvl] = img
+        cv2.namedWindow("tmp", cv2.WINDOW_NORMAL)
+        cv2.imshow("tmp", imgPyr[iLvl])
+        cv2.waitKey()
     return imgPyr

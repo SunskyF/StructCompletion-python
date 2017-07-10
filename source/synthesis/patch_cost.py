@@ -47,6 +47,7 @@ def patch_cost_direct(uvPlaneIDData, trgPos, srcPos, modelPlane, opt):
                     srcPosCurRect /= srcPosCurRect[:, 2:3]
 
                     costDirect[uvPlaneIndCur, itheta] = np.abs(srcPosCurRect[:, 1] - trgPosCurRect[:, 1])
+
     costDirect = np.min(costDirect, axis=1) / opt.imgSize
     costDirect[costDirect >= opt.directThres] = opt.directThres
     return costDirect
@@ -62,15 +63,6 @@ def patch_cost_plane(mLogLPlaneProb, uvPlaneIDData, trgPixSub, srcPixSub):
 
 def patch_cost_app(trgPatch, srcPatch, option):
     uvBias = None
-    if option.useBiasCorrection:
-        meanTrgPatch = np.mean(trgPatch, axis=0)
-        meanSrcPatch = np.mean(srcPatch, axis=0)
-
-        uvBias = meanTrgPatch - meanSrcPatch
-        uvBias[uvBias >= option.minBias] = option.minBias
-        uvBias[uvBias <= option.maxBias] = option.minBias
-
-        srcPatch += uvBias
 
     patchDist = trgPatch - srcPatch
 
