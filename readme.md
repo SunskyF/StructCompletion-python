@@ -13,3 +13,7 @@ opencv3.2 with contrib(https://pypi.python.org/pypi/opencv-contrib-python)
 * it brings a bug
 
 python 3.5
+
+# Origin
+
+https://github.com/jbhuang0604/StructCompletion/issues/new
